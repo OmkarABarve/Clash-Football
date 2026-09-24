@@ -62,8 +62,12 @@ export const MATCH_CONFIG: MatchConfig = {
   deathDuration: 0.2,
   damageFloatDuration: 0.7,
   highLineDuration: 0.55,
+  // Clash Royale tower stats (tiles / seconds)
   princessTowerDamage: 85,
-  princessTowerCooldown: 1.25,
-  kingTowerDamage: 105,
-  kingTowerCooldown: 1.4,
+  princessTowerCooldown: 0.8,
+  princessTowerRange: 7.5,
+  // King damage matches princess; wakes only when a side tower falls
+  kingTowerDamage: 85,
+  kingTowerCooldown: 1.0,
+  kingTowerRange: 7,
 };

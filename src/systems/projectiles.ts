@@ -1,7 +1,6 @@
 import type { GameState, Projectile } from "../config/types";
-import { getUnitDef } from "../config/units";
 import { applyGoalDamage, applyUnitDamage } from "./damage";
-import { goalCenter, pointInGoal } from "./geometry";
+import { closestPointOnUnit, goalCenter, pointInGoal, unitFootprint } from "./geometry";
 import { findGoal } from "./goals";
 
 export function updateProjectiles(state: GameState, dt: number): void {
@@ -27,9 +26,18 @@ export function updateProjectiles(state: GameState, dt: number): void {
       const targetId = shot.target.id;
       const victim = state.units.find((u) => u.id === targetId && u.hp > 0);
       if (!victim) continue;
-      const radius = getUnitDef(victim.defId).radius;
-      if (len <= radius || step >= len - radius) {
+      const tile = state.config.tileSize;
+      const aimPt = closestPointOnUnit(victim, shot.x, shot.y, tile);
+      const hitDx = aimPt.x - shot.x;
+      const hitDy = aimPt.y - shot.y;
+      const hitLen = Math.hypot(hitDx, hitDy) || 1;
+      const footprint = unitFootprint(victim, tile);
+      const hitR = Math.min(footprint.w, footprint.h) / 2;
+      if (hitLen <= hitR || step >= hitLen - hitR) {
         applyUnitDamage(state, victim, shot.damage);
+        if (shot.freezeDuration > 0 && victim.hp > 0) {
+          victim.freezeT = Math.max(victim.freezeT, shot.freezeDuration);
+        }
         continue;
       }
     }
@@ -53,5 +61,6 @@ function resolveAim(
   }
   const targetId = shot.target.id;
   const u = state.units.find((x) => x.id === targetId && x.hp > 0);
-  return u ? { x: u.x, y: u.y } : null;
+  if (!u) return null;
+  return closestPointOnUnit(u, shot.x, shot.y, state.config.tileSize);
 }

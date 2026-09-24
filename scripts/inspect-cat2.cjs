@@ -1,0 +1,11 @@
+const fs = require("fs");
+const t = fs.readFileSync("src/config/types.ts", "utf8");
+console.log("Ability =", t.match(/export type Ability = [^;]+/)?.[0]);
+console.log("CardCategory", t.match(/CardCategory = [^;]+/)?.[0]);
+console.log("TargetFilter", t.match(/TargetFilter = [^;]+/)?.[0]);
+const u = fs.readFileSync("src/config/units.ts", "utf8");
+console.log("neymar", u.match(/neymar: \{[\s\S]*?targetFilter: "[^"]+"/)?.[0]);
+console.log("wall head", u.match(/wall: \{[\s\S]{0,220}/)?.[0]);
+console.log("unitCategory", u.includes("export function unitCategory"));
+console.log("cardCategory", fs.readFileSync("src/config/cards.ts", "utf8").includes("cardCategory"));
+console.log(fs.readFileSync("src/systems/targeting.ts", "utf8").split(/\n/).slice(0, 10).join("\n"));

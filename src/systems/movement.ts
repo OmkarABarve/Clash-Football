@@ -15,33 +15,47 @@ export function updateMovement(state: GameState, dt: number): void {
       unit.shootRecoil = Math.max(0, unit.shootRecoil - dt);
     }
 
+    // Iniesta freeze / stun — cannot walk
+    if (unit.freezeT > 0) {
+      unit.freezeT = Math.max(0, unit.freezeT - dt);
+      updateCharge(unit, dt, 0, false, state.config.tileSize);
+      continue;
+    }
+
     // HighLine shove owns position this tick
     if (unitLockedBySpell(state, unit)) {
-      updateCharge(unit, dt, 0, false);
+      updateCharge(unit, dt, 0, false, state.config.tileSize);
+      continue;
+    }
+
+    // Walls / structures stay put
+    const selfDef = getUnitDef(unit.defId);
+    if (selfDef.ability?.kind === "wall" || selfDef.speed <= 0) {
+      updateCharge(unit, dt, 0, false, state.config.tileSize);
       continue;
     }
 
     // Deploy puff: scale up, no walking until finished
     if (unit.spawnT > 0) {
       unit.spawnT = Math.max(0, unit.spawnT - dt);
-      updateCharge(unit, dt, 0, false);
+      updateCharge(unit, dt, 0, false, state.config.tileSize);
       continue;
     }
 
     if (!unit.target) {
-      updateCharge(unit, dt, 0, false);
+      updateCharge(unit, dt, 0, false, state.config.tileSize);
       continue;
     }
 
     const d = distanceToTarget(state, unit, unit.target);
     if (d <= unit.activeRange) {
-      updateCharge(unit, dt, 0, false);
+      updateCharge(unit, dt, 0, false, state.config.tileSize);
       continue;
     }
 
     const pos = targetPosition(state, unit, unit.target);
     if (!pos) {
-      updateCharge(unit, dt, 0, false);
+      updateCharge(unit, dt, 0, false, state.config.tileSize);
       continue;
     }
 
@@ -66,7 +80,7 @@ export function updateMovement(state: GameState, dt: number): void {
     unit.x = next.x;
     unit.y = next.y;
     unit.movedThisTick = moved > MOVE_EPSILON;
-    updateCharge(unit, dt, moved, unit.movedThisTick);
+    updateCharge(unit, dt, moved, unit.movedThisTick, state.config.tileSize);
   }
 }
 
@@ -83,6 +97,7 @@ function updateCharge(
   dt: number,
   distanceMoved: number,
   moved: boolean,
+  tileSize: number,
 ): void {
   const charge = unit.charge;
   if (!charge) return;
@@ -100,7 +115,7 @@ function updateCharge(
     charge.movingDistance += distanceMoved;
     if (
       charge.movingTime >= ability.moveTime ||
-      charge.movingDistance >= ability.moveDistance
+      charge.movingDistance >= ability.moveDistance * tileSize
     ) {
       charge.ready = true;
     }

@@ -1,7 +1,7 @@
 import type { GameState, Side, TargetRef, Unit } from "../config/types";
-import { getUnitDef } from "../config/units";
-import { closestPointOnGoal, distToGoal, distUnits } from "./geometry";
-import { findGoal, nearestEnemyGoal } from "./goals";
+import { getUnitDef, unitCategory } from "../config/units";
+import { closestPointOnGoal, closestPointOnUnit, distToGoal, distUnits } from "./geometry";
+import { findGoal, nearestEnemyGoal, kingGoal } from "./goals";
 
 function enemySide(side: Side): Side {
   return side === "player" ? "ai" : "player";
@@ -45,12 +45,48 @@ export function updateTargeting(state: GameState): void {
     if (unit.hp <= 0 || unit.deathT > 0) continue;
     if (unit.spawnT > 0) continue;
     const def = getUnitDef(unit.defId);
-    const enemies = livingEnemies(state, unit.side);
 
-    // Aggro at least as far as this unit can shoot, so a long-range Zlatan
-    // locks Neymar at ~his range and stops to fire instead of walking in.
+    // Buildings (Wall etc.) never acquire targets.
+    if (unitCategory(def) === "building" || def.damage <= 0) {
+      unit.target = null;
+      unit.activeRange = 0;
+      continue;
+    }
+
+    const enemies = livingEnemies(state, unit.side);
     const reach = attackRange(state, unit);
     const aggro = Math.max(baseDetect, reach);
+    const foe = enemySide(unit.side);
+
+    if (def.targetFilter === "goalsOnly") {
+      unit.target = goalTarget(state, unit);
+      unit.activeRange = reach;
+      unit.hybridMeleeLock = false;
+      continue;
+    }
+
+    if (def.targetFilter === "buildingsOrKing") {
+      // Prefer enemy buildings (e.g. Wall) anywhere on the pitch — Clash-style
+      // building targeters don't use short troop aggro for buildings.
+      const buildings = enemies.filter(
+        (e) => unitCategory(getUnitDef(e.defId)) === "building",
+      );
+      const nearBuilding = nearestUnit(unit, buildings);
+      if (nearBuilding) {
+        unit.target = { kind: "unit", id: nearBuilding.id };
+        unit.activeRange = reach;
+        unit.hybridMeleeLock = false;
+        continue;
+      }
+      const king = kingGoal(state, foe);
+      unit.target =
+        king && king.hp > 0 ? { kind: "goal", goalId: king.id } : null;
+      unit.activeRange = reach;
+      unit.hybridMeleeLock = false;
+      continue;
+    }
+
+    // Default unitThenGoal: nearest troop in aggro, else nearest goal.
     const near = nearestUnit(
       unit,
       enemies.filter((e) => distUnits(unit, e) <= aggro),
@@ -66,12 +102,12 @@ export function updateTargeting(state: GameState): void {
     unit.target = { kind: "unit", id: near.id };
 
     if (def.attackMode === "hybrid") {
-      const meleeRange = (def.meleeRange ?? 1) * state.config.tileSize * state.config.rangeScale;
+      const meleeRange =
+        (def.meleeRange ?? 1) * state.config.tileSize * state.config.rangeScale;
       const d = distUnits(unit, near);
       const stuck =
         d <= meleeRange ||
         (unit.hybridMeleeLock && d <= state.config.hybridMeleeExit);
-      // Outside melee: hold at long range and shoot. Inside melee: fight close.
       unit.activeRange = stuck ? meleeRange : unit.range;
       unit.hybridMeleeLock = stuck;
       continue;
@@ -82,6 +118,7 @@ export function updateTargeting(state: GameState): void {
   }
 }
 
+
 export function targetPosition(
   state: GameState,
   unit: Unit,
@@ -89,7 +126,9 @@ export function targetPosition(
 ): { x: number; y: number } | null {
   if (target.kind === "unit") {
     const u = state.units.find((x) => x.id === target.id && x.hp > 0);
-    return u ? { x: u.x, y: u.y } : null;
+    if (!u) return null;
+    // Walk / aim at the nearest point on wide footprints (Wall).
+    return closestPointOnUnit(u, unit.x, unit.y, state.config.tileSize);
   }
   const goal = findGoal(state, target.goalId);
   if (!goal || goal.hp <= 0) return null;

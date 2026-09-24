@@ -1,6 +1,7 @@
 import type { GameState, Unit } from "../config/types";
 import { getUnitDef } from "../config/units";
 import { activateKing, findGoal } from "./goals";
+import { createUnit } from "../entities/factory";
 import { distUnits } from "./geometry";
 
 export function auraDamageMultiplier(state: GameState, victim: Unit): number {
@@ -43,8 +44,27 @@ export function applyUnitDamage(
     victim.hp = 0;
     victim.deathT = state.config.deathDuration;
     victim.target = null;
+    breakWallIfNeeded(state, victim);
   }
 }
+
+/** When a Wall is destroyed, spawn its Def troops across its width. */
+function breakWallIfNeeded(state: GameState, wall: Unit): void {
+  const def = getUnitDef(wall.defId);
+  if (def.ability?.kind !== "wall") return;
+  const { breakInto, breakCount, widthTiles } = def.ability;
+  const tile = state.config.tileSize;
+  const width = widthTiles * tile;
+  const startX = wall.x - width / 2 + width / (breakCount * 2);
+  const step = width / breakCount;
+  for (let i = 0; i < breakCount; i++) {
+    const x = startX + step * i;
+    const u = createUnit(state, breakInto, wall.side, x, wall.y);
+    u.spawnT = Math.min(u.spawnT, 0.15);
+    state.units.push(u);
+  }
+}
+
 
 export function applyGoalDamage(
   state: GameState,
@@ -65,11 +85,8 @@ export function applyGoalDamage(
     });
   }
 
-  if (goal.role === "king") {
-    goal.activated = true;
-  }
-
-  // Clash Royale: losing a princess wakes the king
+  // Clash Royale: King wakes only when a side (princess) tower is destroyed —
+  // not merely from being damaged.
   if (goal.role === "princess" && goal.hp <= 0) {
     activateKing(state, goal.side);
   }

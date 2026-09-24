@@ -1,6 +1,6 @@
 import type { GameState } from "../config/types";
 import { unitDps, unitHitSpeed } from "../config/types";
-import { getCardDef, isSpellDef } from "../config/cards";
+import { getCardDef, isSpellDef, cardCategory } from "../config/cards";
 import { nextCardId } from "../systems/cycle";
 import { canAfford } from "../systems/economy";
 
@@ -53,12 +53,19 @@ function syncHand(state: GameState): void {
     if (!affordable) btn.classList.add("unaffordable");
     if (selected) btn.classList.add("selected");
 
+    const cat = cardCategory(def).toUpperCase();
     if (isSpellDef(def)) {
       btn.innerHTML = `
         <span class="card-name">${def.name}</span>
         <span class="card-label">${def.label}</span>
         <span class="card-cost">${def.cost} M</span>
-        <span class="card-stats">SPELL · Push ${def.pushTiles} tiles</span>
+        <span class="card-stats">${cat} · ${
+          def.spell === "dive"
+            ? "Tower −1 / YC"
+            : def.spell === "highline"
+              ? "To half line"
+              : "SPELL"
+        }</span>
       `;
     } else {
       const dps = unitDps(def);
@@ -67,7 +74,7 @@ function syncHand(state: GameState): void {
         <span class="card-name">${def.name}</span>
         <span class="card-label">${def.label}</span>
         <span class="card-cost">${def.cost} M</span>
-        <span class="card-stats">DMG ${def.damage} · Hit ${hit}s · DPS ${dps}</span>
+        <span class="card-stats">${cat} · DMG ${def.damage} · Hit ${hit}s · DPS ${dps}</span>
       `;
     }
   });

@@ -40,7 +40,7 @@ const state = createMatch();
 state.economy.player.current = 10;
 state.deck.hand = ["ronaldo", "messi", "neymar", "zlatan"];
 state.deck.queue = ["ramos", "robbery", "iniesta"];
-state.intents.push({ side: "player", defId: "ronaldo", x: 210, y: 500 });
+state.intents.push({ side: "player", defId: "ronaldo", x: 288, y: 720 });
 for (let i = 0; i < 60 * 30; i++) tick(state);
 console.log("ronaldo status", state.status, "aiGoal", aiHp(state));
 if (aiHp(state) >= 60) throw new Error("Ronaldo should damage goal");
@@ -49,7 +49,7 @@ const s2 = createMatch();
 s2.economy.player.current = 10;
 s2.deck.hand = ["messi", "ronaldo", "neymar", "zlatan"];
 s2.deck.queue = ["ramos", "robbery", "iniesta"];
-s2.intents.push({ side: "player", defId: "messi", x: 210, y: 680 });
+s2.intents.push({ side: "player", defId: "messi", x: 288, y: 800 });
 let empoweredHits = 0;
 for (let i = 0; i < 60 * 25; i++) {
   const before = aiHp(s2);
@@ -80,14 +80,14 @@ const s4 = createMatch();
 s4.economy.player.current = 10;
 s4.deck.hand = ["robbery", "messi", "neymar", "zlatan"];
 s4.deck.queue = ["ramos", "ronaldo", "iniesta"];
-s4.intents.push({ side: "player", defId: "robbery", x: 210, y: 520 });
+s4.intents.push({ side: "player", defId: "robbery", x: 288, y: 740 });
 tick(s4);
 console.log("robbery", s4.units.map((u) => u.label).join(","));
 if (s4.units.length !== 2) throw new Error("Robbery should spawn 2");
 
 const s5 = createMatch();
 s5.economy.ai.current = 10;
-s5.intents.push({ side: "ai", defId: "zlatan", x: 210, y: 200 });
+s5.intents.push({ side: "ai", defId: "zlatan", x: 288, y: 250 });
 tick(s5);
 if (s5.units.length !== 1 || s5.units[0]!.side !== "ai") {
   throw new Error("AI deploy failed");

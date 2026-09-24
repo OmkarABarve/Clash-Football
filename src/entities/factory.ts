@@ -143,6 +143,8 @@ export function createUnit(
     shootRecoil: 0,
     hitFlash: 0,
     deathT: 0,
+    freezeT: 0,
+    yellowCard: false,
   };
 }
 
@@ -156,6 +158,7 @@ export function createProjectile(
     damage: number;
     goalHpDelta: number;
     empowered: boolean;
+    freezeDuration?: number;
   },
 ): Projectile {
   return {
@@ -168,6 +171,7 @@ export function createProjectile(
     goalHpDelta: opts.goalHpDelta,
     speed: state.config.projectileSpeed,
     empowered: opts.empowered,
+    freezeDuration: opts.freezeDuration ?? 0,
   };
 }
 
@@ -180,15 +184,16 @@ export function spawnFromCard(
   const spawned: Unit[] = [];
   for (let i = 0; i < count; i++) {
     const offsetX = (def.spawnVariants?.[i]?.offsetX ?? 0) * state.config.tileSize;
+    const r = def.radius * state.config.tileSize;
     const x = clamp(
       intent.x + offsetX,
-      def.radius,
-      state.config.arena.width - def.radius,
+      r,
+      state.config.arena.width - r,
     );
     const y = clamp(
       intent.y,
-      def.radius,
-      state.config.arena.height - def.radius,
+      r,
+      state.config.arena.height - r,
     );
     spawned.push(createUnit(state, intent.defId, intent.side, x, y, i));
   }

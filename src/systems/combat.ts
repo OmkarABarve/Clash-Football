@@ -9,6 +9,12 @@ export function updateCombat(state: GameState, dt: number): void {
     if (unit.hp <= 0 || unit.deathT > 0) continue;
     if (unit.spawnT > 0) continue;
 
+    // Freeze ticking is owned by movement; combat only respects the lock.
+    if (unit.freezeT > 0) continue;
+
+    const defEarly = getUnitDef(unit.defId);
+    if (defEarly.ability?.kind === "wall" || defEarly.damage <= 0) continue;
+
     if (unit.cooldownLeft > 0) {
       unit.cooldownLeft = Math.max(0, unit.cooldownLeft - dt);
     }
@@ -38,6 +44,9 @@ export function updateCombat(state: GameState, dt: number): void {
     }
     unit.shootRecoil = state.config.shootRecoilDuration;
 
+    const freezeDuration =
+      def.ability?.kind === "freeze" ? def.ability.duration : 0;
+
     state.projectiles.push(
       createProjectile(state, {
         side: unit.side,
@@ -47,8 +56,9 @@ export function updateCombat(state: GameState, dt: number): void {
         damage,
         goalHpDelta,
         empowered,
+        freezeDuration,
       }),
     );
-    unit.cooldownLeft = def.attackCooldown;
+    unit.cooldownLeft = def.attackCooldown / (unit.yellowCard ? 0.8 : 1);
   }
 }

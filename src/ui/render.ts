@@ -1,9 +1,9 @@
 import type { GameState, Goal, Unit } from "../config/types";
 import { getCardDef, isSpellDef } from "../config/cards";
 import { getUnitDef } from "../config/units";
-import { isInOwnHalf, isOnPitch } from "../systems/intents";
+import { deployRadiusPx, isInOwnHalf, isOnPitch } from "../systems/intents";
 import { riverLayout } from "../systems/lanes";
-import { behindSign, enemyOf } from "../systems/spells";
+import { behindSign, enemyOf, findDiveTarget } from "../systems/spells";
 
 export type CanvasView = {
   canvas: HTMLCanvasElement;
@@ -123,6 +123,23 @@ function drawPitch(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.strokeRect(bridge.x, bridge.y, bridge.w, bridge.h);
   }
 
+  // Halfway line + center circle (tile grid markings)
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, state.config.midlineY);
+  ctx.lineTo(width, state.config.midlineY);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(width / 2, state.config.midlineY, state.config.centerCircleRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  // Penalty boxes
+  const pw = state.config.penaltyWidth;
+  const pd = state.config.penaltyDepth;
+  const px = (width - pw) / 2;
+  ctx.strokeRect(px, 0, pw, pd);
+  ctx.strokeRect(px, height - pd, pw, pd);
+
   // half tint for deploy zones
   ctx.fillStyle = "rgba(60,120,255,0.06)";
   ctx.fillRect(0, river.bottom, width, height - river.bottom);
@@ -188,7 +205,7 @@ function drawAuras(ctx: CanvasRenderingContext2D, state: GameState): void {
     const def = getUnitDef(u.defId);
     if (def.ability?.kind !== "aura") continue;
     ctx.beginPath();
-    ctx.arc(u.x, u.y, def.ability.radius, 0, Math.PI * 2);
+    ctx.arc(u.x, u.y, def.ability.radius * state.config.tileSize, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(80, 220, 120, 0.12)";
     ctx.fill();
     ctx.strokeStyle = "rgba(80, 220, 120, 0.35)";
@@ -204,7 +221,7 @@ function drawUnit(
 ): void {
   const def = getUnitDef(unit.defId);
   const color = unit.side === "player" ? "#2196f3" : "#e53935";
-  const r = def.radius;
+  const r = def.radius * state.config.tileSize;
   const puff = state.config.deployPuffDuration;
   const spawnScale =
     unit.spawnT > 0 && puff > 0
@@ -253,6 +270,66 @@ function drawUnit(
       ctx.lineWidth = 2;
       ctx.stroke();
     }
+  }
+
+  // Wall: wide horizontal barrier (3 tiles)
+  if (def.ability?.kind === "wall") {
+    const tile = state.config.tileSize;
+    const w = def.ability.widthTiles * tile;
+    const h = Math.max(r * 2, tile * 0.7);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.45 + 0.55 * scale;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#0d1b2a";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    // Brick seams
+    ctx.strokeStyle = "rgba(13, 27, 42, 0.45)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i < def.ability.widthTiles; i++) {
+      const sx = -w / 2 + (w * i) / def.ability.widthTiles;
+      ctx.beginPath();
+      ctx.moveTo(sx, -h / 2);
+      ctx.lineTo(sx, h / 2);
+      ctx.stroke();
+    }
+    if (unit.hitFlash > 0) {
+      const flashA = Math.min(
+        1,
+        unit.hitFlash / Math.max(0.0001, state.config.hitFlashDuration),
+      );
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.55 + flashA * 0.45})`;
+      ctx.fillRect(-w / 2, -h / 2, w, h);
+    }
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(unit.label, 0, 0);
+    ctx.restore();
+
+    if (deathProgress > 0) {
+      const ringR = (w / 2) * (1 + deathProgress * 0.6);
+      ctx.beginPath();
+      ctx.ellipse(unit.x, unit.y, ringR, h * (1 + deathProgress), 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.55 * (1 - deathProgress)})`;
+      ctx.lineWidth = 3 * (1 - deathProgress * 0.5);
+      ctx.stroke();
+    }
+
+    if (deathProgress <= 0) {
+      const barW = w * 0.9;
+      const barH = 4;
+      const bx = unit.x - barW / 2;
+      const by = unit.y - h / 2 - 10;
+      const pct = Math.max(0, unit.hp / unit.maxHp);
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(bx, by, barW, barH);
+      ctx.fillStyle = pct > 0.35 ? "#66bb6a" : "#ef5350";
+      ctx.fillRect(bx, by, barW * pct, barH);
+    }
+    return;
   }
 
   ctx.beginPath();
@@ -306,6 +383,28 @@ function drawUnit(
     ctx.arc(unit.x, unit.y, ringR * 0.7, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(255, 255, 255, ${0.25 * (1 - deathProgress)})`;
     ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Yellow card (Dive)
+  if (unit.yellowCard) {
+    const qw = 9;
+    const qh = 12;
+    const qx = unit.x + r * 0.65;
+    const qy = unit.y - r - 4;
+    ctx.fillStyle = "#fdd835";
+    ctx.fillRect(qx, qy, qw, qh);
+    ctx.strokeStyle = "#f9a825";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(qx, qy, qw, qh);
+  }
+
+  // Freeze ring
+  if (unit.freezeT > 0) {
+    ctx.beginPath();
+    ctx.arc(unit.x, unit.y, r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(77, 208, 225, 0.9)";
+    ctx.lineWidth = 3;
     ctx.stroke();
   }
 
@@ -392,23 +491,56 @@ function drawDeployPreview(ctx: CanvasRenderingContext2D, state: GameState): voi
   const def = getCardDef(state.selectedId);
 
   if (isSpellDef(def) && def.spell === "highline") {
-    drawHighLinePreview(ctx, state, def.pushTiles);
+    drawHighLinePreview(ctx, state, def.pushTiles ?? 5);
+    return;
+  }
+  if (isSpellDef(def) && def.spell === "dive") {
+    drawDivePreview(ctx, state);
     return;
   }
   if (isSpellDef(def)) return;
 
   const { arena } = state.config;
-  const valid = isInOwnHalf(state, "player", state.hover.x, state.hover.y, def.radius);
+
+  // Wall deploy preview — 3-tile barrier ghost
+  if (def.ability?.kind === "wall") {
+    const tile = state.config.tileSize;
+    const w = def.ability.widthTiles * tile;
+    const h = Math.max(def.radius * tile * 2, tile * 0.7);
+    const margin = deployRadiusPx(state, state.selectedId!);
+    const valid = isInOwnHalf(state, "player", state.hover.x, state.hover.y, margin);
+    const x = clamp(state.hover.x, margin, arena.width - margin);
+    const y = clamp(state.hover.y, h / 2, arena.height - h / 2);
+    ctx.save();
+    ctx.globalAlpha = valid ? 0.72 : 0.35;
+    ctx.fillStyle = valid ? "#2196f3" : "#e53935";
+    ctx.fillRect(x - w / 2, y - h / 2, w, h);
+    ctx.strokeStyle = valid ? "#ffeb3b" : "#ef9a9a";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(x - w / 2, y - h / 2, w, h);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(def.label, x, y);
+    ctx.restore();
+    return;
+  }
+
+  const rPx = def.radius * state.config.tileSize;
+  const valid = isInOwnHalf(state, "player", state.hover.x, state.hover.y, deployRadiusPx(state, state.selectedId!));
   const count = def.spawnCount ?? 1;
 
   ctx.save();
   ctx.globalAlpha = valid ? 0.72 : 0.35;
   for (let i = 0; i < count; i++) {
     const variant = def.spawnVariants?.[i];
-    const offsetX = variant?.offsetX ?? 0;
-    const x = clamp(state.hover.x + offsetX, def.radius, arena.width - def.radius);
-    const y = clamp(state.hover.y, def.radius, arena.height - def.radius);
-    const r = def.radius;
+    const offsetX = (variant?.offsetX ?? 0) * state.config.tileSize;
+    const x = clamp(state.hover.x + offsetX, rPx, arena.width - rPx);
+    const y = clamp(state.hover.y, rPx, arena.height - rPx);
+    const r = rPx;
     const label = variant?.label ?? def.label;
 
     ctx.beginPath();
@@ -480,7 +612,7 @@ function drawHighLinePreview(
   ctx.font = "bold 14px system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(`HighLine · push ${pushTiles} tiles`, width / 2, lineY - sign * 18);
+  ctx.fillText(`HighLine · to half line`, width / 2, lineY - sign * 18);
   ctx.restore();
 }
 
@@ -534,3 +666,63 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+
+function drawDivePreview(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (!state.hover) return;
+  const { x, y } = state.hover;
+  const target = findDiveTarget(state, "player", x, y);
+  const valid = isOnPitch(state, x, y);
+  ctx.save();
+  ctx.globalAlpha = valid ? 0.9 : 0.35;
+  ctx.beginPath();
+  ctx.arc(x, y, state.config.tileSize * 1.5, 0, Math.PI * 2);
+  ctx.strokeStyle = target ? "#ffeb3b" : "#90a4ae";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  if (target?.kind === "goal") {
+    const goal = state.goals.find((g) => g.id === target.goalId);
+    if (goal) {
+      ctx.strokeStyle = "#ffeb3b";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(goal.x - 2, goal.y - 2, goal.w + 4, goal.h + 4);
+      ctx.fillStyle = "#fff59d";
+      ctx.font = "bold 13px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("−1", goal.x + goal.w / 2, goal.y + goal.h / 2);
+    }
+  } else if (target?.kind === "unit") {
+    const unit = state.units.find((u) => u.id === target.unitId);
+    if (unit) {
+      const ur = getUnitDef(unit.defId).radius * state.config.tileSize;
+      ctx.beginPath();
+      ctx.arc(unit.x, unit.y, ur + 8, 0, Math.PI * 2);
+      ctx.strokeStyle = "#fdd835";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = "#fdd835";
+      ctx.font = "bold 11px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("YC", unit.x, unit.y - ur - 12);
+    }
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(
+    target?.kind === "goal"
+      ? "Dive · Tower −1"
+      : target?.kind === "unit"
+        ? "Dive · Yellow card"
+        : "Dive · aim tower or troop",
+    x,
+    y - state.config.tileSize * 1.5 - 8,
+  );
+  ctx.restore();
+}

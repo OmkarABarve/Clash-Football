@@ -6,10 +6,13 @@ function enemySide(side: Side): Side {
   return side === "player" ? "ai" : "player";
 }
 
-/** Range reaches from the tower center to the half-line (midline). */
+/** Clash-style tower sight range in world px (from tile stats). */
 export function towerRange(state: GameState, goal: Goal): number {
-  const c = goalCenter(goal);
-  return Math.abs(c.y - state.config.midlineY);
+  const tiles =
+    goal.role === "king"
+      ? state.config.kingTowerRange
+      : state.config.princessTowerRange;
+  return tiles * state.config.tileSize;
 }
 
 function towerDamage(state: GameState, goal: Goal): number {
@@ -52,8 +55,8 @@ function nearestInRange(
 }
 
 /**
- * Active towers shoot the nearest enemy troop in range (to the midline).
- * King only fires once activated.
+ * Active towers shoot the nearest enemy troop in range.
+ * Princess: always. King: only after a side (princess) tower falls.
  */
 export function updateTowers(state: GameState, dt: number): void {
   for (const goal of state.goals) {

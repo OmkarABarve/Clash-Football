@@ -4,7 +4,7 @@ import { getCardDef, isSpellDef } from "../config/cards";
 import { playCard, isInHand } from "./cycle";
 import { canAfford, spend } from "./economy";
 import { ownHalfY } from "./lanes";
-import { castHighLine } from "./spells";
+import { castHighLine, castDive } from "./spells";
 
 export function processIntents(state: GameState): void {
   if (state.intents.length === 0) return;
@@ -28,11 +28,13 @@ export function processIntents(state: GameState): void {
       }
       if (def.spell === "highline") {
         castHighLine(state, intent.side);
+      } else if (def.spell === "dive") {
+        castDive(state, intent.side, intent.x, intent.y);
       }
       continue;
     }
 
-    if (!isInOwnHalf(state, intent.side, intent.x, intent.y, def.radius)) {
+    if (!isInOwnHalf(state, intent.side, intent.x, intent.y, deployRadiusPx(state, intent.defId))) {
       continue;
     }
     if (!spend(eco, def.cost)) continue;
@@ -53,6 +55,17 @@ export function isOnPitch(
 ): boolean {
   const { arena } = state.config;
   return x >= 0 && x <= arena.width && y >= 0 && y <= arena.height;
+}
+
+
+/** Horizontal/vertical margin used for deploy validity (walls are wide). */
+export function deployRadiusPx(state: GameState, defId: string): number {
+  const def = getCardDef(defId);
+  if (!isSpellDef(def) && def.ability?.kind === "wall") {
+    return (def.ability.widthTiles / 2) * state.config.tileSize;
+  }
+  if (isSpellDef(def)) return 0;
+  return def.radius * state.config.tileSize;
 }
 
 export function isInOwnHalf(

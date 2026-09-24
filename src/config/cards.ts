@@ -1,5 +1,5 @@
 import type { SpellDef } from "./types";
-import { UNIT_DEFS, enabledUnitIds, getUnitDef } from "./units";
+import { UNIT_DEFS, enabledUnitIds, getUnitDef, unitCategory } from "./units";
 
 export const SPELL_DEFS: Record<string, SpellDef> = {
   highline: {
@@ -10,6 +10,16 @@ export const SPELL_DEFS: Record<string, SpellDef> = {
     kind: "spell",
     spell: "highline",
     pushTiles: 5,
+  },
+  dive: {
+    id: "dive",
+    name: "Dive",
+    label: "DV",
+    cost: 2,
+    kind: "spell",
+    spell: "dive",
+    towerHpDelta: 1,
+    yellowAttackSpeedMult: 0.8,
   },
 };
 
@@ -43,3 +53,11 @@ export function enabledCardIds(): string[] {
 }
 
 export { UNIT_DEFS, enabledUnitIds, getUnitDef };
+
+import type { CardCategory } from "./types";
+
+/** Clash Royale-style card family. */
+export function cardCategory(def: CardDef): CardCategory {
+  if (isSpellDef(def)) return "spell";
+  return unitCategory(def);
+}

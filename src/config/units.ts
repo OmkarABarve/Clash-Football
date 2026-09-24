@@ -51,14 +51,14 @@ export const UNIT_DEFS: Record<string, UnitDef> = {
     label: "N",
     cost: 3,
     hp: 400,
-    speed: 2.5,
+    speed: 3.1,
     range: 0,
     meleeRange: 1,
     damage: 70,
     attackCooldown: 1.4,
     attackMode: "melee",
-    targetFilter: "unitThenGoal",
-    radius: 0.55,
+    targetFilter: "buildingsOrKing",
+    radius: 0.48,
     ability: {
       kind: "aura",
       radius: 3.5,
@@ -115,14 +115,14 @@ export const UNIT_DEFS: Record<string, UnitDef> = {
         label: "Ri",
         speed: 2.0,
         range: 3.25,
-        offsetX: -2.5,
+        offsetX: -4.5,
       },
       {
         name: "Robben",
         label: "Rb",
         speed: 2.8,
         range: 4,
-        offsetX: 2.5,
+        offsetX: 4.5,
       },
     ],
   },
@@ -140,6 +140,49 @@ export const UNIT_DEFS: Record<string, UnitDef> = {
     attackMode: "melee",
     targetFilter: "unitThenGoal",
     radius: 0.55,
+    ability: {
+      kind: "freeze",
+      duration: 0.3,
+    },
+  },
+  wall: {
+    id: "wall",
+    name: "Wall",
+    label: "W",
+    cost: 5,
+    category: "building",
+    hp: 400, // half Zlatan
+    speed: 0,
+    range: 0,
+    meleeRange: 0,
+    damage: 0,
+    attackCooldown: 1,
+    attackMode: "melee",
+    targetFilter: "unitThenGoal",
+    radius: 0.5,
+    ability: {
+      kind: "wall",
+      widthTiles: 3,
+      breakInto: "def",
+      breakCount: 3,
+    },
+  },
+  /** Spawned when a Wall breaks — not in the hand cycle. */
+  def: {
+    id: "def",
+    name: "Def",
+    label: "D",
+    cost: 0,
+    hp: 300, // half Iniesta
+    speed: 2.3, // Iniesta speed
+    range: 0,
+    meleeRange: 1,
+    damage: 50, // basic melee
+    attackCooldown: 1.6,
+    attackMode: "melee",
+    targetFilter: "unitThenGoal",
+    radius: 0.45,
+    enabled: false,
   },
 };
 
@@ -151,4 +194,10 @@ export function getUnitDef(id: string): UnitDef {
 
 export function enabledUnitIds(): string[] {
   return Object.keys(UNIT_DEFS).filter((id) => UNIT_DEFS[id].enabled !== false);
+}
+
+
+/** Clash-style card family for a unit def (default troop). */
+export function unitCategory(def: import("./types").UnitDef): "troop" | "building" {
+  return def.category ?? "troop";
 }

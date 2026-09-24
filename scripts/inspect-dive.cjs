@@ -1,0 +1,13 @@
+const fs = require("fs");
+const sp = fs.readFileSync("src/systems/spells.ts", "utf8");
+console.log("spell fns", [...sp.matchAll(/export function (\w+)/g)].map((m) => m[1]));
+console.log(sp.match(/export function enemy\w+\([\s\S]*?\n\}/)?.[0]);
+const r = fs.readFileSync("src/ui/render.ts", "utf8");
+console.log("spells import", r.includes("systems/spells"));
+const i = r.indexOf("function drawDeployPreview");
+console.log(r.slice(i, i + 500));
+console.log("--- unit draw freeze ---");
+const j = r.indexOf("freezeT");
+console.log(r.slice(j - 80, j + 200));
+console.log("getUnitDef", r.includes("getUnitDef"));
+console.log("isOnPitch import", r.includes("isOnPitch"));

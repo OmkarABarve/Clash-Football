@@ -24,9 +24,9 @@ export const LAYOUT_TILES = {
   /** King / main goal: 4 tiles wide, centered (cols 8–11). */
   kingGoal: { col: 8, width: 4, depth: 1.25 },
   /** Princess towers: ~2.25 tiles wide, inset from each side. */
-  princessGoal: { width: 2.25, depth: 1, insetX: 0.75, insetY: 2 },
+  princessGoal: { width: 2.25, depth: 1, insetX: 0.75, insetY: 3.5 },
   /** King sits behind princesses. */
-  kingInsetY: 0.3,
+  kingInsetY: 0.5,
   /** Penalty box: 10 wide × 5 deep, centered on each end. */
   penalty: { width: 10, depth: 5 },
   /** River band straddling the halfway line. */

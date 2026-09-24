@@ -1,7 +1,7 @@
 import type { GameState } from "../config/types";
 import { getCardDef, isSpellDef } from "../config/cards";
 import { canAfford } from "./economy";
-import { isInOwnHalf, isOnPitch } from "./intents";
+import { deployRadiusPx, isInOwnHalf, isOnPitch } from "./intents";
 import { restartMatch } from "./match";
 
 export type CanvasMapper = {
@@ -43,7 +43,7 @@ export function wireInput(
     const def = getCardDef(state.selectedId);
     if (isSpellDef(def)) {
       if (!isOnPitch(state, world.x, world.y)) return;
-    } else if (!isInOwnHalf(state, "player", world.x, world.y, def.radius)) {
+    } else if (!isInOwnHalf(state, "player", world.x, world.y, deployRadiusPx(state, state.selectedId))) {
       return;
     }
     if (!canAfford(state.economy.player, def.cost)) return;

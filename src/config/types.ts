@@ -1,7 +1,10 @@
 export type Side = "player" | "ai";
 export type MatchStatus = "playing" | "playerWin" | "aiWin";
 export type AttackMode = "ranged" | "melee" | "hybrid";
-export type TargetFilter = "goalsOnly" | "unitThenGoal";
+/** Clash-style card families. */
+export type CardCategory = "troop" | "building" | "spell";
+
+export type TargetFilter = "goalsOnly" | "unitThenGoal" | "buildingsOrKing";
 export type GoalRole = "princess" | "king";
 export type GoalLane = "left" | "right" | "center";
 
@@ -21,9 +24,26 @@ export interface AuraAbility {
   damageReduction: number;
 }
 
-export type Ability = ChargeAbility | AuraAbility;
+export interface FreezeAbility {
+  kind: "freeze";
+  /** Stun duration in seconds applied on each hit. */
+  duration: number;
+}
 
-export type SpellId = "highline";
+/** Stationary barrier that soaks hits, then splits into troops. */
+export interface WallAbility {
+  kind: "wall";
+  /** Barrier width in tiles. */
+  widthTiles: number;
+  /** Unit def spawned when the wall breaks. */
+  breakInto: string;
+  /** How many troops spawn on break. */
+  breakCount: number;
+}
+
+export type Ability = ChargeAbility | AuraAbility | FreezeAbility | WallAbility;
+
+export type SpellId = "highline" | "dive";
 
 /** Spell cards (no troop spawn). Cast on the pitch. */
 export interface SpellDef {
@@ -33,8 +53,12 @@ export interface SpellDef {
   cost: number;
   kind: "spell";
   spell: SpellId;
-  /** Tiles to shove every enemy troop toward their own backline. */
-  pushTiles: number;
+  /** HighLine: tiles to shove every enemy troop toward their own backline. */
+  pushTiles?: number;
+  /** Pen: guaranteed HP removed from the enemy King tower. */
+  towerHpDelta?: number;
+  /** Dive: AS multiplier on yellow (0.8 = −20%). */
+  yellowAttackSpeedMult?: number;
   enabled?: boolean;
 }
 
@@ -68,10 +92,12 @@ export interface SpawnVariant {
 }
 
 export interface UnitDef {
+  /** Clash-style family. Default "troop". Wall etc. use "building". */
   id: string;
   name: string;
   label: string;
   cost: number;
+  category?: Exclude<CardCategory, "spell">;
   hp: number;
   /** Movement speed in tiles per second. */
   speed: number;
@@ -135,6 +161,10 @@ export interface Unit {
   hitFlash: number;
   /** Death anim countdown. > 0 keeps the unit alive for the shrink/ring. */
   deathT: number;
+  /** Stun / freeze timer (seconds). > 0 = cannot move or attack. */
+  freezeT: number;
+  /** Dive yellow card — attacks 20% slower while true. */
+  yellowCard: boolean;
 }
 
 export interface Projectile {
@@ -147,6 +177,8 @@ export interface Projectile {
   goalHpDelta: number;
   speed: number;
   empowered: boolean;
+  /** Optional stun applied on hit (Iniesta). */
+  freezeDuration: number;
 }
 
 export interface Goal {
@@ -248,12 +280,16 @@ export interface MatchConfig {
   highLineDuration: number;
   /** Princess tower damage per shot (vs troops). */
   princessTowerDamage: number;
-  /** Princess tower hit speed in seconds. */
+  /** Princess tower hit speed in seconds (Clash: 0.8). */
   princessTowerCooldown: number;
+  /** Princess tower shoot range in tiles (Clash: 7.5). */
+  princessTowerRange: number;
   /** King tower damage per shot (vs troops), when activated. */
   kingTowerDamage: number;
-  /** King tower hit speed in seconds. */
+  /** King tower hit speed in seconds (Clash: ~1.0). */
   kingTowerCooldown: number;
+  /** King tower shoot range in tiles (Clash: ~7). */
+  kingTowerRange: number;
 }
 
 export interface DeployIntent {
