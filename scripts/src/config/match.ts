@@ -1,0 +1,25 @@
+import type { MatchConfig } from "./types";
+
+export const MATCH_CONFIG: MatchConfig = {
+  princessMaxHp: 5,
+  kingMaxHp: 5,
+  startingM: 5,
+  maxM: 10,
+  regenInterval: 2.8,
+  handSize: 4,
+  arena: { width: 420, height: 760 },
+  midlineY: 380,
+  princessWidth: 72,
+  princessHeight: 32,
+  kingWidth: 100,
+  kingHeight: 44,
+  princessInsetX: 28,
+  princessInsetY: 64,
+  kingInset: 10,
+  projectileSpeed: 420,
+  aiInterval: [3, 6],
+  step: 1 / 60,
+  unitRadiusDefault: 18,
+  hybridMeleeExit: 55,
+  goalHitDelta: 1,
+};

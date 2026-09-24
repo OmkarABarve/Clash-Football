@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clash Football</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game"></canvas>
+      <div id="hud">
+        <div id="match-timer" aria-label="Match timer">3:00</div>
+        <div id="ms-bar-wrap">
+          <div id="ms-label">M's <span id="ms-value">5</span>/10</div>
+          <div id="ms-bar">
+            <div id="ms-fill"></div>
+          </div>
+        </div>
+        <div id="hand">
+          <button class="card" data-slot="0" type="button"></button>
+          <button class="card" data-slot="1" type="button"></button>
+          <button class="card" data-slot="2" type="button"></button>
+          <button class="card" data-slot="3" type="button"></button>
+          <div class="card next" id="next-card" title="Next card"></div>
+        </div>
+      </div>
+      <div id="end-screen" class="hidden">
+        <div id="end-panel">
+          <h1 id="end-title">You Win!</h1>
+          <button id="restart-btn" type="button">Restart</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

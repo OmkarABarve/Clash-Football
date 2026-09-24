@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "notes": "Edit this file to add, remove, or retune players. Game logic should read these values and not hard-code stats. Speed numbers live in speedTiers so one change updates every player on that tier. The fifth hand slot is null until a fifth player is added to startingHand.",
+  "speedTiers": {
+    "slow": { "label": "slow", "pxPerSec": 45 },
+    "medium": { "label": "medium", "pxPerSec": 70 },
+    "medium-fast": { "label": "medium-fast", "pxPerSec": 95 },
+    "fastest": { "label": "fastest", "pxPerSec": 130 }
+  },
+  "startingHand": ["messi", "ronaldo", "neymar", "zlatan", null],
+  "players": [
+    {
+      "id": "messi",
+      "name": "Messi",
+      "initial": "M",
+      "enabled": true,
+      "cost": 6,
+      "hp": 900,
+      "speedTier": "medium",
+      "range": 60,
+      "damage": 120,
+      "attackCooldown": 1.2,
+      "targets": "goalsOnly",
+      "ability": {
+        "id": "charge",
+        "name": "Charge",
+        "uninterruptedSeconds": 3,
+        "uninterruptedDistancePx": 200,
+        "speedMultiplier": 1.8,
+        "nextShotDamageMultiplier": 2
+      }
+    },
+    {
+      "id": "ronaldo",
+      "name": "Ronaldo",
+      "initial": "R",
+      "enabled": true,
+      "cost": 6,
+      "hp": 700,
+      "speedTier": "fastest",
+      "range": 220,
+      "damage": 110,
+      "attackCooldown": 1.0,
+      "targets": "all",
+      "ability": null
+    },
+    {
+      "id": "neymar",
+      "name": "Neymar",
+      "initial": "N",
+      "enabled": true,
+      "cost": 4,
+      "hp": 600,
+      "speedTier": "medium-fast",
+      "range": 110,
+      "damage": 70,
+      "attackCooldown": 0.9,
+      "targets": "all",
+      "ability": {
+        "id": "damageReductionAura",
+        "name": "Damage Reduction Aura",
+        "radiusPx": 120,
+        "damageTakenMultiplier": 0.75,
+        "stacks": false
+      }
+    },
+    {
+      "id": "zlatan",
+      "name": "Zlatan",
+      "initial": "Z",
+      "enabled": true,
+      "cost": 3,
+      "hp": 350,
+      "speedTier": "slow",
+      "range": 300,
+      "damage": 60,
+      "attackCooldown": 1.6,
+      "targets": "all",
+      "ability": null
+    }
+  ]
+}
